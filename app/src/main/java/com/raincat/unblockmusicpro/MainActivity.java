@@ -43,8 +43,8 @@ import java.io.File;
 
 public class MainActivity extends PermissionProxyActivity {
     private Context context;
-    private RelativeLayout rela_enable, rela_ad, rela_high, rela_ssl, rela_hide, rela_log;
-    private CheckBox cb_enable, cb_ad, cb_high, cb_ssl, cb_hide, cb_log;
+    private RelativeLayout rela_enable, rela_high,  rela_hide, rela_log;
+    private CheckBox cb_enable, cb_high,  cb_hide, cb_log;
     private TextView tv_update, tv_faq, tv_version, tv_script, tv_perfect[];
     private ImageView iv_question, iv_version, iv_script;
     private RadioGroup rg_origin;
@@ -77,15 +77,12 @@ public class MainActivity extends PermissionProxyActivity {
         checkState();
         initView();
         listener();
-        checkPermission(context, new String[]{PERMISSION_EXTERNAL_STORAGE, PERMISSION_EXTERNAL_STORAGE2}, new OnPermissionResultListener() {
-            @Override
-            public void onResult(boolean get) {
-                if (get) {
-                    initData();
-                    checkUpdate();
-                } else
-                    finish();
-            }
+        checkPermission(context, new String[]{PERMISSION_EXTERNAL_STORAGE, PERMISSION_EXTERNAL_STORAGE2}, get -> {
+            if (get) {
+                initData();
+                checkUpdate();
+            } else
+                finish();
         });
     }
 
@@ -109,8 +106,11 @@ public class MainActivity extends PermissionProxyActivity {
                     Tools.copyFilesAssets(context, "node-64bit", Tools.SDCardPath);
                 else
                     Tools.copyFilesAssets(context, "node-32bit", Tools.SDCardPath);
-            } else
+                changeQuality(cb_high.isChecked());
+            } else {
                 Tools.nowVersion = localVersionString;
+                Tools.copyFilesAssets(context, "UnblockNeteaseMusic-" + Tools.nowVersion.replace("-high", "") + "/node_modules", Tools.SDCardPath + "/node_modules");
+            }
             Tools.copyFilesAssets(context, "log", Tools.SDCardPath);
         } catch (JSONException e) {
             e.printStackTrace();
@@ -127,15 +127,11 @@ public class MainActivity extends PermissionProxyActivity {
 
     private void initView() {
         rela_enable = (RelativeLayout) findViewById(R.id.rela_enable);
-        rela_ad = (RelativeLayout) findViewById(R.id.rela_ad);
         rela_high = (RelativeLayout) findViewById(R.id.rela_high);
-        rela_ssl = (RelativeLayout) findViewById(R.id.rela_ssl);
         rela_hide = (RelativeLayout) findViewById(R.id.rela_hide);
         rela_log = (RelativeLayout) findViewById(R.id.rela_log);
         cb_enable = (CheckBox) findViewById(R.id.cb_enable);
-        cb_ad = (CheckBox) findViewById(R.id.cb_ad);
         cb_high = (CheckBox) findViewById(R.id.cb_high);
-        cb_ssl = (CheckBox) findViewById(R.id.cb_ssl);
         cb_hide = (CheckBox) findViewById(R.id.cb_hide);
         cb_log = (CheckBox) findViewById(R.id.cb_log);
 
@@ -156,150 +152,96 @@ public class MainActivity extends PermissionProxyActivity {
 
         tv_version.setText(BuildConfig.VERSION_NAME);
         tv_perfect[0].setText("Google：4.3.1");
-        tv_perfect[1].setText("Global：6.0.0～6.4.1");
+        tv_perfect[1].setText("Global：6.0.0～7.0.20");
 
         share = getSharedPreferences("share", Context.MODE_WORLD_READABLE);
         originIndex = share.getInt("origin", 0);
         rg_origin.check(Tools.originResId[originIndex]);
         cb_enable.setChecked(share.getBoolean("enable", true));
-        cb_ad.setChecked(share.getBoolean("ad", true));
-        cb_ssl.setChecked(share.getBoolean("ssl", true));
         cb_high.setChecked(share.getBoolean("high", false));
         cb_hide.setChecked(share.getBoolean("hide", false));
         cb_log.setChecked(share.getBoolean("log", false));
     }
 
     private void listener() {
-        rg_origin.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(RadioGroup radioGroup, int i) {
-                switch (i) {
-                    case R.id.rb_a:
-                        originIndex = 0;
-                        break;
-                    case R.id.rb_b:
-                        originIndex = 1;
-                        break;
-                    case R.id.rb_c:
-                        originIndex = 2;
-                        break;
-                    case R.id.rb_d:
-                        originIndex = 3;
-                        break;
-                }
-                Toast.makeText(context, "切换成功，请重启网易云音乐！", Toast.LENGTH_SHORT).show();
-                share.edit().putInt("origin", originIndex).putString("nodejs", Tools.Start + Tools.origin[originIndex]).
-                        putString("originString", getString(Tools.originString[originIndex])).apply();
+        rg_origin.setOnCheckedChangeListener((radioGroup, i) -> {
+            switch (i) {
+                case R.id.rb_a:
+                    originIndex = 0;
+                    break;
+                case R.id.rb_b:
+                    originIndex = 1;
+                    break;
+                case R.id.rb_c:
+                    originIndex = 2;
+                    break;
+                case R.id.rb_d:
+                    originIndex = 3;
+                    break;
             }
+            Toast.makeText(context, "切换成功，请重启网易云音乐！", Toast.LENGTH_SHORT).show();
+            share.edit().putInt("origin", originIndex).putString("nodejs", Tools.Start + Tools.origin[originIndex]).
+                    putString("originString", getString(Tools.originString[originIndex])).apply();
         });
 
-        rela_enable.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                boolean isChecked = !cb_enable.isChecked();
-                cb_enable.setChecked(isChecked);
-                share.edit().putBoolean("enable", isChecked).apply();
-                Toast.makeText(context, "操作成功，请重启网易云音乐！", Toast.LENGTH_SHORT).show();
-            }
+        rela_enable.setOnClickListener(v -> {
+            boolean isChecked = !cb_enable.isChecked();
+            cb_enable.setChecked(isChecked);
+            share.edit().putBoolean("enable", isChecked).apply();
+            Toast.makeText(context, "操作成功，请重启网易云音乐！", Toast.LENGTH_SHORT).show();
         });
 
-        rela_ad.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                boolean isChecked = !cb_ad.isChecked();
-                cb_ad.setChecked(isChecked);
-                share.edit().putBoolean("ad", isChecked).apply();
-                Toast.makeText(context, "操作成功，请重启网易云音乐！", Toast.LENGTH_SHORT).show();
-            }
+        rela_high.setOnClickListener(v -> {
+            boolean isChecked = !cb_high.isChecked();
+            changeQuality(isChecked);
+            cb_high.setChecked(isChecked);
+            share.edit().putBoolean("high", isChecked).apply();
+            Toast.makeText(context, "操作成功，请重启网易云音乐！", Toast.LENGTH_SHORT).show();
         });
 
-        rela_ssl.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                boolean isChecked = !cb_ssl.isChecked();
-                cb_ssl.setChecked(isChecked);
-                share.edit().putBoolean("ssl", isChecked).apply();
-                Toast.makeText(context, "操作成功，请重启网易云音乐！", Toast.LENGTH_SHORT).show();
-            }
+        rela_hide.setOnClickListener(v -> {
+            boolean isChecked = !cb_hide.isChecked();
+            cb_hide.setChecked(isChecked);
+            share.edit().putBoolean("hide", isChecked).apply();
+            handler.sendEmptyMessageDelayed(isChecked ? 0 : 1, 1000);
+            Toast.makeText(context, "操作成功！", Toast.LENGTH_SHORT).show();
         });
 
-        rela_high.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                boolean isChecked = !cb_high.isChecked();
-                changeQuality(isChecked);
-                cb_high.setChecked(isChecked);
-                share.edit().putBoolean("high", isChecked).apply();
-                Toast.makeText(context, "操作成功，请重启网易云音乐！", Toast.LENGTH_SHORT).show();
-            }
+        rela_log.setOnClickListener(v -> {
+            boolean isChecked = !cb_log.isChecked();
+            cb_log.setChecked(isChecked);
+            share.edit().putBoolean("log", isChecked).apply();
+            Toast.makeText(context, "操作成功，请重启网易云音乐！", Toast.LENGTH_SHORT).show();
         });
 
-        rela_hide.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                boolean isChecked = !cb_hide.isChecked();
-                cb_hide.setChecked(isChecked);
-                share.edit().putBoolean("hide", isChecked).apply();
-                handler.sendEmptyMessageDelayed(isChecked ? 0 : 1, 1000);
-                Toast.makeText(context, "操作成功！", Toast.LENGTH_SHORT).show();
-            }
+        iv_question.setOnClickListener(view -> showMessageDialog("高亮项目将优先代理", Tools.message, false));
+
+        tv_update.setOnClickListener(v -> {
+            String update = Tools.readFileFromSD(Tools.SDCardPath + File.separator + "update.txt");
+            showMessageDialog(getString(R.string.menu_update), update, false);
         });
 
-        rela_log.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                boolean isChecked = !cb_log.isChecked();
-                cb_log.setChecked(isChecked);
-                share.edit().putBoolean("log", isChecked).apply();
-                Toast.makeText(context, "操作成功，请重启网易云音乐！", Toast.LENGTH_SHORT).show();
-            }
+        tv_faq.setOnClickListener(v -> {
+            String FAQ = Tools.readFileFromSD(Tools.SDCardPath + File.separator + "FAQ.txt");
+            showMessageDialog(getString(R.string.menu_faq), FAQ, false);
         });
 
-        iv_question.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                showMessageDialog("高亮项目将优先代理", Tools.message, false);
-            }
+        linear_version.setOnClickListener(v -> {
+            if (versionUpdate == null)
+                return;
+            if (!versionUpdate.version.equals(BuildConfig.VERSION_NAME)) {
+                showUpdateDialog("更新APP - " + versionUpdate.version, "注意：更新后请重启手机！", versionUpdate);
+            } else
+                Toast.makeText(context, "APP已是最新版本！", Toast.LENGTH_SHORT).show();
         });
 
-        tv_update.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String update = Tools.readFileFromSD(Tools.SDCardPath + File.separator + "update.txt");
-                showMessageDialog(getString(R.string.menu_update), update, false);
-            }
-        });
-
-        tv_faq.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String FAQ = Tools.readFileFromSD(Tools.SDCardPath + File.separator + "FAQ.txt");
-                showMessageDialog(getString(R.string.menu_faq), FAQ, false);
-            }
-        });
-
-        linear_version.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (versionUpdate == null)
-                    return;
-                if (!versionUpdate.version.equals(BuildConfig.VERSION_NAME)) {
-                    showUpdateDialog("更新APP - " + versionUpdate.version, "注意：更新后请重启手机！", versionUpdate);
-                } else
-                    Toast.makeText(context, "APP已是最新版本！", Toast.LENGTH_SHORT).show();
-            }
-        });
-
-        linear_script.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (scriptUpdate == null)
-                    return;
-                if (!scriptUpdate.version.equals(Tools.nowVersion.replace("-high", ""))) {
-                    showUpdateDialog("更新脚本 - " + scriptUpdate.version, "注意：下载不了多试几次，相信自己是最胖的！", scriptUpdate);
-                } else
-                    Toast.makeText(context, "脚本已是最新版本！", Toast.LENGTH_SHORT).show();
-            }
+        linear_script.setOnClickListener(v -> {
+            if (scriptUpdate == null)
+                return;
+            if (!scriptUpdate.version.equals(Tools.nowVersion.replace("-high", ""))) {
+                showUpdateDialog("更新脚本 - " + scriptUpdate.version, "注意：下载不了多试几次，相信自己是最胖的！", scriptUpdate);
+            } else
+                Toast.makeText(context, "脚本已是最新版本！", Toast.LENGTH_SHORT).show();
         });
     }
 
@@ -360,14 +302,12 @@ public class MainActivity extends PermissionProxyActivity {
 
     /**
      * 改变音质
-     *
-     * @param high
      */
     private void changeQuality(boolean high) {
         String packageJson = Tools.readFileFromSD(Tools.SDCardPath + File.separator + "package.json");
-//        String kuwo = Tools.readFileFromSD(Tools.SDCardPath + File.separator + "provider" + File.separator + "kuwo.js");
-        String migu = Tools.readFileFromSD(Tools.SDCardPath + File.separator + "provider" + File.separator + "migu.js");
-        String hook = Tools.readFileFromSD(Tools.SDCardPath + File.separator + "hook.js");
+        String kuwo = Tools.readFileFromSD(Tools.SDCardPath + File.separator + "src" + File.separator + "provider" + File.separator + "select.js");
+//        String migu = Tools.readFileFromSD(Tools.SDCardPath + File.separator + "src" + File.separator + "provider" + File.separator + "migu.js");
+        String hook = Tools.readFileFromSD(Tools.SDCardPath + File.separator + "src" + File.separator + "hook.js");
         String localVersionString = "";
         try {
             JSONObject jsonObject = new JSONObject(packageJson);
@@ -376,20 +316,22 @@ public class MainActivity extends PermissionProxyActivity {
             e.printStackTrace();
         }
         if (high) {
-            packageJson = packageJson.replace(localVersionString, localVersionString + "-high");
-//            kuwo = kuwo.replace("&format=mp3&", "&format=aac|mp3&");
-            migu = migu.replace("/*'sqPlayInfo'*/", "'sqPlayInfo'");
-            hook = hook.replace("(item.code != 200 || item.freeTrialInfo)", "(item.code != 200 || item.freeTrialInfo ||item.br <= 128000)");
+            if (!packageJson.contains("-high"))
+                packageJson = packageJson.replace(localVersionString, localVersionString + "-high");
+            if (!kuwo.contains("\nmodule.exports.ENABLE_FLAC = 'true'"))
+                kuwo = kuwo + "\nmodule.exports.ENABLE_FLAC = 'true'";
+//            migu = migu.replace("/*'sqPlayInfo'*/,", "'sqPlayInfo',");
+            hook = hook.replace("(item.code != 200 || item.freeTrialInfo)", "(item.code != 200 || item.freeTrialInfo || item.br <= 128000)");
         } else {
             packageJson = packageJson.replace(localVersionString, localVersionString.replace("-high", ""));
-//            kuwo = kuwo.replace("&format=aac|mp3&", "&format=mp3&");
-            migu = migu.replace("'sqPlayInfo'", "/*'sqPlayInfo'*/");
-            hook = hook.replace("(item.code != 200 || item.freeTrialInfo ||item.br <= 128000)", "(item.code != 200 || item.freeTrialInfo)");
+            kuwo = kuwo.replace("\n\nmodule.exports.ENABLE_FLAC = 'true'", "");
+//            migu = migu.replace("'sqPlayInfo',", "/*'sqPlayInfo'*/,");
+            hook = hook.replace("(item.code != 200 || item.freeTrialInfo || item.br <= 128000)", "(item.code != 200 || item.freeTrialInfo)");
         }
         Tools.writeFileFromSD(Tools.SDCardPath + File.separator + "package.json", packageJson);
-//        Tools.writeFileFromSD(Tools.SDCardPath + File.separator + "provider" + File.separator + "kuwo.js", kuwo);
-        Tools.writeFileFromSD(Tools.SDCardPath + File.separator + "provider" + File.separator + "migu.js", migu);
-        Tools.writeFileFromSD(Tools.SDCardPath + File.separator + "hook.js", hook);
+        Tools.writeFileFromSD(Tools.SDCardPath + File.separator + "src" + File.separator + "provider" + File.separator + "select.js", kuwo);
+//        Tools.writeFileFromSD(Tools.SDCardPath + File.separator + "src" + File.separator + "provider" + File.separator + "migu.js", migu);
+        Tools.writeFileFromSD(Tools.SDCardPath + File.separator + "src" + File.separator + "hook.js", hook);
         initData();
     }
 
@@ -422,12 +364,9 @@ public class MainActivity extends PermissionProxyActivity {
                 .setCancelable(false)
                 .setTitle(title)
                 .setMessage(message)
-                .setNegativeButton("确定", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        if (finish)
-                            finish();
-                    }
+                .setNegativeButton("确定", (dialog, which) -> {
+                    if (finish)
+                        finish();
                 })
                 .show();
     }
@@ -441,49 +380,43 @@ public class MainActivity extends PermissionProxyActivity {
                 .setTitle(title)
                 .setMessage(log)
                 .setNegativeButton("取消", null)
-                .setNeutralButton("无法下载，访问蓝奏云", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
-                        ClipData clipData = ClipData.newPlainText(null, "23fj");
-                        Toast.makeText(context, "密码已复制到剪切板", Toast.LENGTH_SHORT).show();
-                        clipboard.setPrimaryClip(clipData);
-                        Uri uri = Uri.parse("https://www.lanzous.com/b957345");
-                        Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-                        startActivity(intent);
-                    }
+                .setNeutralButton("无法下载，访问蓝奏云", (dialog, which) -> {
+                    ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+                    ClipData clipData = ClipData.newPlainText(null, "23fj");
+                    Toast.makeText(context, "密码已复制到剪切板", Toast.LENGTH_SHORT).show();
+                    clipboard.setPrimaryClip(clipData);
+                    Uri uri = Uri.parse("https://www.lanzous.com/b957345");
+                    Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+                    startActivity(intent);
                 })
-                .setPositiveButton("更新", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        String url = update.downloadUrl;
-                        if (url.length() == 0)
-                            url = update.zipUrl;
-                        new FILE_DOWNLOAD(context, url, R.mipmap.ic_launcher, true, true, new NetCallBack() {
-                            @Override
-                            public void finish(JSONObject jsonObject) throws JSONException {
-                                if (update.downloadUrl.length() == 0) {
-                                    iv_script.setVisibility(View.GONE);
-                                    String path = jsonObject.getString("path");
-                                    if (Tools.unzipFile(path, Tools.SDCardPath))
-                                        Toast.makeText(context, "操作成功，请重启网易云音乐！", Toast.LENGTH_SHORT).show();
-                                    else
-                                        Toast.makeText(context, "操作失败", Toast.LENGTH_SHORT).show();
-                                    changeQuality(cb_high.isChecked());
-                                }
+                .setPositiveButton("更新", (dialog, which) -> {
+                    String url = update.downloadUrl;
+                    if (url.length() == 0)
+                        url = update.zipUrl;
+                    new FILE_DOWNLOAD(context, url, R.mipmap.ic_launcher, true, true, new NetCallBack() {
+                        @Override
+                        public void finish(JSONObject jsonObject) throws JSONException {
+                            if (update.downloadUrl.length() == 0) {
+                                iv_script.setVisibility(View.GONE);
+                                String path = jsonObject.getString("path");
+                                if (Tools.unzipFile(path, Tools.SDCardPath))
+                                    Toast.makeText(context, "操作成功，请重启网易云音乐！", Toast.LENGTH_SHORT).show();
+                                else
+                                    Toast.makeText(context, "操作失败", Toast.LENGTH_SHORT).show();
+                                changeQuality(cb_high.isChecked());
                             }
+                        }
 
-                            @Override
-                            public void error(int i, String s) {
-                                ErrorCode.showError(context, i);
-                            }
+                        @Override
+                        public void error(int i, String s) {
+                            ErrorCode.showError(context, i);
+                        }
 
-                            @Override
-                            public void init() {
+                        @Override
+                        public void init() {
 
-                            }
-                        });
-                    }
+                        }
+                    });
                 })
                 .show();
     }

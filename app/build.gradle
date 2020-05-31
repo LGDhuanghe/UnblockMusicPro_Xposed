@@ -2,14 +2,15 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion 23
-    buildToolsVersion "27.0.3"
+    buildToolsVersion "29.0.3"
 
     defaultConfig {
         applicationId "com.raincat.unblockmusicpro"
         minSdkVersion 14
         targetSdkVersion 23
-        versionCode 260
-        versionName "2.6.0"
+        versionCode 281
+        versionName "2.8.1"
+        archivesBaseName = "UnblockMusic.Pro_Xposed_${versionName}"
     }
     buildTypes {
         release {
@@ -21,6 +22,10 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+
+    lintOptions {
+        abortOnError false
+    }
 }
 
 dependencies {
@@ -30,7 +35,8 @@ dependencies {
     implementation 'org.smali:dexlib2:2.2.7'
     implementation 'com.google.guava:guava:27.1-android'
 
-    provided 'de.robv.android.xposed:api:82'
-    provided 'de.robv.android.xposed:api:82:sources'
+    compileOnly 'de.robv.android.xposed:api:82'
+    compileOnly 'de.robv.android.xposed:api:82:sources'
     implementation files('libs/RootTools.jar')
+    implementation project(':hotxposed')
 }

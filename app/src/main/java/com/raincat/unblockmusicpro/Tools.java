@@ -3,8 +3,11 @@ package com.raincat.unblockmusicpro;
 import android.app.ActivityManager;
 import android.content.Context;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.TextUtils;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.annimon.stream.Stream;
 import com.stericson.RootShell.exceptions.RootDeniedException;
@@ -21,10 +24,10 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.lang.reflect.Method;
-import java.nio.charset.Charset;
 import java.security.KeyManagementException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.cert.CertificateException;
@@ -43,13 +46,13 @@ import javax.net.ssl.TrustManagerFactory;
  *     author : RainCat
  *     e-mail : nining377@gmail.com
  *     time   : 2019/09/08
- *     desc   : 说明
+ *     desc   : 工具类
  *     version: 1.0
  * </pre>
  */
 
 public class Tools {
-    static String nowVersion = "0.19.3";
+    static String nowVersion = "0.25.3";
 
     final static String HOOK_NAME = "com.netease.cloudmusic";
     final static String SDCardPath = Environment.getExternalStorageDirectory() + "/UnblockMusicPro";
@@ -67,9 +70,6 @@ public class Tools {
 
     /**
      * 获取线程名称
-     *
-     * @param context
-     * @return
      */
     static String getCurrentProcessName(Context context) {
         int pid = android.os.Process.myPid();
@@ -86,14 +86,10 @@ public class Tools {
 
     /**
      * 从assets中拷贝文件
-     *
-     * @param context
-     * @param oldPath
-     * @param codePath
      */
     static void copyFilesAssets(Context context, String oldPath, String codePath) {
         try {
-            String fileNames[] = context.getAssets().list(oldPath);//获取assets目录下的所有文件及目录名
+            String[] fileNames = context.getAssets().list(oldPath);//获取assets目录下的所有文件及目录名
             if (fileNames.length > 0) {//如果是目录
                 File file = new File(codePath);
                 file.mkdirs();//如果文件夹不存在，则递归
@@ -119,9 +115,6 @@ public class Tools {
 
     /**
      * 从SD卡中拷贝文件
-     *
-     * @param oldPath
-     * @param newPath
      */
     static void copyFilesFromSD(String oldPath, String newPath) {
         try {
@@ -165,9 +158,6 @@ public class Tools {
 
     /**
      * 从SD卡中读取一个文件
-     *
-     * @param path
-     * @return
      */
     static String readFileFromSD(String path) {
         StringBuilder stringBuilder = new StringBuilder();
@@ -192,20 +182,15 @@ public class Tools {
 
     /**
      * 写入内容到一个文件
-     *
-     * @param path
-     * @param content
-     * @return
      */
-    static boolean writeFileFromSD(String path, String content) {
+    static void writeFileFromSD(String path, String content) {
         BufferedWriter out = null;
         try {
             File file = new File(path);
-            out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file, false),"utf-8"));
+            out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file, false), "utf-8"));
             out.write(content);
         } catch (Exception e) {
             e.printStackTrace();
-            return false;
         } finally {
             try {
                 if (out != null) {
@@ -215,7 +200,6 @@ public class Tools {
                 e.printStackTrace();
             }
         }
-        return true;
     }
 
     static boolean unzipFile(String zipFileString, String outPathString) {
@@ -258,7 +242,8 @@ public class Tools {
                 }
             }
             inZip.close();
-            szName = szName.substring(0, szName.lastIndexOf(File.separator));
+
+            szName = szName.substring(0, szName.indexOf(File.separator));
             copyFilesFromSD(outPathString + File.separator + szName, outPathString);
             deleteDirectory(outPathString + File.separator + szName);
         } catch (IOException e) {
@@ -305,20 +290,37 @@ public class Tools {
     }
 
     /**
-     * ADB命令
-     *
-     * @param command
+     * 弹窗
      */
-    static void shell(Command command) {
+    static void showToastOnLooper(final Context context, String message) {
+        try {
+            Handler handler = new Handler(Looper.getMainLooper());
+            handler.post(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
+                }
+            });
+        } catch (RuntimeException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    /**
+     * ADB命令
+     */
+    static void shell(Context context, Command command) {
         try {
             RootTools.closeAllShells();
             RootTools.getShell(false).add(command);
         } catch (TimeoutException | RootDeniedException | IOException e) {
             e.printStackTrace();
+            showToastOnLooper(context, e.getMessage());
         }
     }
 
-    /**
+    /*
      * 删除指定文件夹下所有文件及文件夹本身
      *
      * @param path
@@ -342,14 +344,14 @@ public class Tools {
         flag = true;
         File[] files = dirFile.listFiles();
         //遍历删除文件夹下的所有文件(包括子目录)
-        for (int i = 0; i < files.length; i++) {
-            if (files[i].isFile()) {
+        for (File file : files) {
+            if (file.isFile()) {
                 //删除子文件
-                flag = deleteFile(files[i].getAbsolutePath());
+                flag = deleteFile(file.getAbsolutePath());
                 if (!flag) break;
             } else {
                 //删除子目录
-                flag = deleteDirectory(files[i].getAbsolutePath());
+                flag = deleteDirectory(file.getAbsolutePath());
                 if (!flag) break;
             }
         }
@@ -374,9 +376,6 @@ public class Tools {
 
     /**
      * 获取CA证书
-     *
-     * @param caPath
-     * @return
      */
     static SSLContext getSLLContext(String caPath) {
         SSLContext sslContext = null;
@@ -417,5 +416,35 @@ public class Tools {
                 .filter(s -> TextUtils.isEmpty(start) || s.startsWith(start))
                 .filter(s -> TextUtils.isEmpty(end) || s.endsWith(end))
                 .toList();
+    }
+
+    /**
+     * 计算MD5值
+     */
+    public static String fileToMD5(String filePath) {
+        try (InputStream inputStream = new FileInputStream(filePath)) {
+            // Create an FileInputStream instance according to the filepath
+            byte[] buffer = new byte[1024]; // The buffer to read the file
+            MessageDigest digest = MessageDigest.getInstance("MD5"); // Get a MD5 instance
+            int numRead = 0; // Record how many bytes have been read
+            while (numRead != -1) {
+                numRead = inputStream.read(buffer);
+                if (numRead > 0)
+                    digest.update(buffer, 0, numRead); // Update the digest
+            }
+            byte[] md5Bytes = digest.digest(); // Complete the hash computing
+            return convertHashToString(md5Bytes); // Call the function to convert to hex digits
+        } catch (Exception e) {
+            return null;
+        }
+        // Close the InputStream
+    }
+
+    private static String convertHashToString(byte[] hashBytes) {
+        StringBuilder returnVal = new StringBuilder();
+        for (byte hashByte : hashBytes) {
+            returnVal.append(Integer.toString((hashByte & 0xff) + 0x100, 16).substring(1));
+        }
+        return returnVal.toString().toLowerCase();
     }
 }
